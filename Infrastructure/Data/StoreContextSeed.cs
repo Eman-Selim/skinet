@@ -31,7 +31,7 @@ namespace Infrastructure.Data
                     await context.SaveChangesAsync();
                 }
                 if(!context.Product.Any()){
-                    var ProductData=File.ReadAllText("..Infrastructure/Data/SeedData/products.json");
+                    var ProductData=File.ReadAllText("../Infrastructure/Data/SeedData/products.json");
                     var product=JsonSerializer.Deserialize<List<Product>>(ProductData);
                     foreach (var item in product)
                     {
