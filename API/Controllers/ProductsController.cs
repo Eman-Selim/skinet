@@ -10,12 +10,13 @@ using core.Interfaces;
 using core.Specifications;
 using API.Dtos;
 using AutoMapper;
+using API.Errors;
+using API.Helpers;
 
 namespace API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class ProductsController:ControllerBase
+    
+    public class ProductsController:BaseApiController
     {
         private readonly IGenericRepository<Product> _produtsRepo;
         private readonly IGenericRepository<ProductBrand> _productBrandRepo;
@@ -33,16 +34,28 @@ namespace API.Controllers
             }
 
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<ProductToReturnDto>>> GetProducts(){
-            var spec= new ProductsWithTypesAndBrandSpecifications();
+        public async Task<ActionResult<IReadOnlyList<ProductToReturnDto>>> GetProducts(
+            [FromQuery]ProductSpecParams productParams){
+            var spec= new ProductsWithTypesAndBrandSpecifications(productParams);
+
+            var countSpec=new ProductWithFilterForCountSpecification(productParams);
+
+            var totalItems= await _produtsRepo.CountAsync(countSpec);
+
             var products=await _produtsRepo.ListAsync(spec);
-            return Ok(_mapper.Map<IReadOnlyList<Product>,IReadOnlyList<ProductToReturnDto>>(products));
+
+            var data=_mapper.Map<IReadOnlyList<Product>,IReadOnlyList<ProductToReturnDto>>(products);
+            
+            return Ok(new Pagination<ProductToReturnDto>(productParams.PageIndex,productParams.PageSize,totalItems,data));
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse),StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ProductToReturnDto>> GetProduct(int id){
             var spec=new ProductsWithTypesAndBrandSpecifications(id);
             var product= await _produtsRepo.GetEntityWithSpec(spec);
+            if(product==null) return NotFound(new ApiResponse(404));;
             return _mapper.Map<Product,ProductToReturnDto>(product);
         }
         [HttpGet("brands")]
